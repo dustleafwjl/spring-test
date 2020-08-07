@@ -4,10 +4,12 @@ import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.Trade;
 import com.thoughtworks.rslist.domain.Vote;
 import com.thoughtworks.rslist.dto.RsEventDto;
+import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.exception.Error;
 import com.thoughtworks.rslist.exception.RequestNotValidException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
+import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
 import com.thoughtworks.rslist.service.RsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +24,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @RestController
@@ -31,13 +38,63 @@ import java.util.stream.Collectors;
 public class RsController {
   @Autowired RsEventRepository rsEventRepository;
   @Autowired UserRepository userRepository;
+  @Autowired
+  TradeRepository tradeRepository;
   @Autowired RsService rsService;
 
   @GetMapping("/rs/list")
   public ResponseEntity<List<RsEvent>> getRsEventListBetween(
       @RequestParam(required = false) Integer start, @RequestParam(required = false) Integer end) {
-    List<RsEvent> rsEvents =
-        rsEventRepository.findAll().stream()
+    List<TradeDto> tradeDtos = tradeRepository.findAll().stream()
+                    .filter(ele->{
+                      if(start!=null && end != null) {
+                        return ele.getRank()>start && ele.getRank() <= end;
+                      }else if(start != null) {
+                        return ele.getRank() > start;
+                      } else if(end != null) {
+                        return ele.getRank() > 0 && ele.getRank() <= end;
+                      } else {
+                        return true;
+                      }
+                    }).collect(Collectors.toList());
+    List<RsEvent> tradeEvents = getRsEventsWithTrade(tradeDtos);
+    List<RsEvent> rsEvents = getRsEvents();
+
+    for (int index = 0; index < tradeDtos.size(); index ++) {
+      rsEvents.add(index, tradeEvents.get(index));
+    }
+    rsEvents = rsEvents.stream().filter(distinctByKey(RsEvent::getEventName)).collect(Collectors.toList());
+
+
+    if (start == null || end == null) {
+      return ResponseEntity.ok(rsEvents);
+    }
+    return ResponseEntity.ok(rsEvents.subList(start - 1, end));
+  }
+
+
+  private static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+    Map<Object,Boolean> seen = new ConcurrentHashMap<>();
+    return t -> ((ConcurrentHashMap) seen).putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
+  }
+  private List<RsEvent> getRsEventsWithTrade(List<TradeDto> tradeDtos) {
+    return tradeDtos.stream()
+            .map(ele -> rsEventRepository.findById(ele.getRsEventDto().getId()).get())
+            .sorted(Comparator.comparing(RsEventDto::getVoteNum).reversed())
+            .map(
+                    item ->
+                            RsEvent.builder()
+                                    .eventName(item.getEventName())
+                                    .keyword(item.getKeyword())
+                                    .userId(item.getId())
+                                    .voteNum(item.getVoteNum())
+                                    .build())
+            .collect(Collectors.toList());
+  }
+
+  private List<RsEvent> getRsEvents() {
+    return rsEventRepository.findAll().stream()
+            .sorted(Comparator.comparing(RsEventDto::getVoteNum).reversed())
             .map(
                 item ->
                     RsEvent.builder()
@@ -47,10 +104,6 @@ public class RsController {
                         .voteNum(item.getVoteNum())
                         .build())
             .collect(Collectors.toList());
-    if (start == null || end == null) {
-      return ResponseEntity.ok(rsEvents);
-    }
-    return ResponseEntity.ok(rsEvents.subList(start - 1, end));
   }
 
   @GetMapping("/rs/{index}")

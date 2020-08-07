@@ -218,11 +218,12 @@ class RsControllerTest {
                     post("/rs/buy/"+rsEventDto1.getId())
                     .content(jsonTrade).contentType(MediaType.APPLICATION_JSON));
 
-//    mockMvc
-//            .perform(get("/voteRecord").param("userId", String.valueOf(save.getId()))
-//                    .param("pageIndex", "1")
-//                    .param("rsEventId", String.valueOf(rsEventDto1.getId())))
-//            .andExpect(jsonPath("$[0].keyword", is("none")))
-//            .andExpect(jsonPath("$[0].eventName", is("the two event")));
+    mockMvc
+            .perform(get("/rs/list"))
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].eventName", is("the two event")))
+            .andExpect(jsonPath("$[0].keyword", is("none")))
+            .andExpect(jsonPath("$[1].eventName", is("the one event")))
+            .andExpect(jsonPath("$[1].keyword", is("none")));
   }
 }
