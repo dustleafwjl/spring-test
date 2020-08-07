@@ -1,9 +1,12 @@
 package com.thoughtworks.rslist.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thoughtworks.rslist.domain.Trade;
 import com.thoughtworks.rslist.dto.RsEventDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
 import com.thoughtworks.rslist.repository.RsEventRepository;
+import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
 import com.thoughtworks.rslist.repository.VoteRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +38,7 @@ class RsControllerTest {
   @Autowired UserRepository userRepository;
   @Autowired RsEventRepository rsEventRepository;
   @Autowired VoteRepository voteRepository;
+  @Autowired TradeRepository tradeRepository;
   private UserDto userDto;
 
   @BeforeEach
@@ -184,5 +188,41 @@ class RsControllerTest {
     List<VoteDto> voteDtos =  voteRepository.findAll();
     assertEquals(voteDtos.size(), 1);
     assertEquals(voteDtos.get(0).getNum(), 1);
+  }
+
+  @Test
+  public void shouldBuyRsEventSuccess() throws Exception {
+    UserDto save = userRepository.save(userDto);
+    RsEventDto rsEventDto =
+            RsEventDto.builder().keyword("none").eventName("the one event").user(save).build();
+    rsEventDto = rsEventRepository.save(rsEventDto);
+    RsEventDto rsEventDto1 =
+            RsEventDto.builder().keyword("none").eventName("the two event").user(save).build();
+    rsEventDto1 = rsEventRepository.save(rsEventDto1);
+
+
+    String jsonValue =
+            String.format(
+                    "{\"userId\":%d,\"time\":\"%s\",\"voteNum\":1}",
+                    save.getId(), LocalDateTime.now().toString());
+
+    String jsonTrade = "{\"amount\":24, \"rank\":1}";
+    mockMvc
+            .perform(
+                    post("/rs/vote/{id}", rsEventDto.getId())
+                            .content(jsonValue)
+                            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk());
+    mockMvc
+            .perform(
+                    post("/rs/buy/"+rsEventDto1.getId())
+                    .content(jsonTrade).contentType(MediaType.APPLICATION_JSON));
+
+//    mockMvc
+//            .perform(get("/voteRecord").param("userId", String.valueOf(save.getId()))
+//                    .param("pageIndex", "1")
+//                    .param("rsEventId", String.valueOf(rsEventDto1.getId())))
+//            .andExpect(jsonPath("$[0].keyword", is("none")))
+//            .andExpect(jsonPath("$[0].eventName", is("the two event")));
   }
 }

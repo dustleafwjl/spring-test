@@ -1,4 +1,4 @@
-package com.thoughtworks.rslist.domain;
+package com.thoughtworks.rslist.dto;
 
 
 import lombok.AllArgsConstructor;
@@ -6,20 +6,22 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.OneToOne;
+import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
+@Entity
+@Table(name = "trade")
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Trade {
-    @NotNull
+public class TradeDto {
+    @Id
+    @GeneratedValue
+    private int id;
     private int amount;
-    @NotNull
     private int rank;
-    @NotNull
-    private int rs_id;
+    @OneToOne
+    @JoinColumn(name = "rs_event_id")
+    private RsEventDto rsEventDto;
 }
