@@ -3,15 +3,9 @@ package com.thoughtworks.rslist.service;
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.Trade;
 import com.thoughtworks.rslist.domain.Vote;
-import com.thoughtworks.rslist.dto.RsEventDto;
-import com.thoughtworks.rslist.dto.TradeDto;
-import com.thoughtworks.rslist.dto.UserDto;
-import com.thoughtworks.rslist.dto.VoteDto;
+import com.thoughtworks.rslist.dto.*;
 import com.thoughtworks.rslist.exception.AmountIsLessException;
-import com.thoughtworks.rslist.repository.RsEventRepository;
-import com.thoughtworks.rslist.repository.TradeRepository;
-import com.thoughtworks.rslist.repository.UserRepository;
-import com.thoughtworks.rslist.repository.VoteRepository;
+import com.thoughtworks.rslist.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -30,22 +24,25 @@ public class RsService {
   final RsEventRepository rsEventRepository;
   final UserRepository userRepository;
   final VoteRepository voteRepository;
+  final TradeOnlyRepository tradeOnlyRepository;
   final TradeRepository tradeRepository;
 
 
-  public RsService(RsEventRepository rsEventRepository, UserRepository userRepository, VoteRepository voteRepository, TradeRepository tradeRepository) {
+  public RsService(RsEventRepository rsEventRepository, UserRepository userRepository,
+                   VoteRepository voteRepository, TradeOnlyRepository tradeOnlyRepository, TradeRepository tradeRepository) {
     this.rsEventRepository = rsEventRepository;
     this.userRepository = userRepository;
     this.voteRepository = voteRepository;
+    this.tradeOnlyRepository = tradeOnlyRepository;
     this.tradeRepository = tradeRepository;
   }
 
   public List<RsEvent> getRsEventsBetween(Integer start, Integer end) {
-    List<TradeDto> tradeDtos = getTradeDtos(start, end);
-    List<RsEvent> tradeEvents = getRsEventsWithTrade(tradeDtos);
+    List<TradeOnlyDto> tradeOnlyDtos = getTradeDtos(start, end);
+    List<RsEvent> tradeEvents = getRsEventsWithTrade(tradeOnlyDtos);
     List<RsEvent> rsEvents = getRsEvents();
 
-    rsEvents = addTradeRsInToRsEvent(start, tradeDtos, tradeEvents, rsEvents);
+    rsEvents = addTradeRsInToRsEvent(start, tradeOnlyDtos, tradeEvents, rsEvents);
     return rsEvents;
   }
 
@@ -67,8 +64,8 @@ public class RsService {
     return userDtoisPresent;
   }
 
-  private List<TradeDto> getTradeDtos(Integer start, Integer end) {
-    return tradeRepository.findAll().stream()
+  private List<TradeOnlyDto> getTradeDtos(Integer start, Integer end) {
+    return tradeOnlyRepository.findAll().stream()
             .filter(ele->{
               if(start!=null && end != null) {
                 return ele.getRank()>start && ele.getRank() <= end;
@@ -82,9 +79,9 @@ public class RsService {
             }).collect(Collectors.toList());
   }
 
-  private List<RsEvent> addTradeRsInToRsEvent(Integer start, List<TradeDto> tradeDtos, List<RsEvent> tradeEvents, List<RsEvent> rsEvents) {
-    for (int index = 0; index < tradeDtos.size(); index ++) {
-      int rankIndex = tradeDtos.get(index).getRank() - 1;
+  private List<RsEvent> addTradeRsInToRsEvent(Integer start, List<TradeOnlyDto> tradeOnlyDtos, List<RsEvent> tradeEvents, List<RsEvent> rsEvents) {
+    for (int index = 0; index < tradeOnlyDtos.size(); index ++) {
+      int rankIndex = tradeOnlyDtos.get(index).getRank() - 1;
       if(start != null) {
         rankIndex += start - 1;
       }
@@ -99,8 +96,8 @@ public class RsService {
     Map<Object,Boolean> seen = new ConcurrentHashMap<>();
     return t -> ((ConcurrentHashMap) seen).putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
   }
-  private List<RsEvent> getRsEventsWithTrade(List<TradeDto> tradeDtos) {
-    return tradeDtos.stream()
+  private List<RsEvent> getRsEventsWithTrade(List<TradeOnlyDto> tradeOnlyDtos) {
+    return tradeOnlyDtos.stream()
             .map(ele -> rsEventRepository.findById(ele.getRsEvent().getId()).get())
             .sorted(Comparator.comparing(RsEventDto::getVoteNum).reversed())
             .map(
@@ -153,29 +150,31 @@ public class RsService {
 
   public void buy(Trade trade, int eventId) {
     Optional<RsEventDto> rsEvent = rsEventRepository.findById(eventId);
-    Optional<TradeDto> existTrade = tradeRepository.findByRank(trade.getRank());
-    TradeDto tradeDto;
+    Optional<TradeOnlyDto> existTrade = tradeOnlyRepository.findByRank(trade.getRank());
+    TradeOnlyDto tradeOnlyDto;
     if(!rsEvent.isPresent()) {
       throw new RuntimeException("rsevent is not exist");
     }
     if(existTrade.isPresent()) {
-      tradeDto = existTrade.get();
-      if(tradeDto.getAmount() < trade.getAmount()) {
-        tradeDto.setRsEvent(rsEvent.get());
-        tradeDto.setAmount(trade.getAmount());
+      tradeOnlyDto = existTrade.get();
+      if(tradeOnlyDto.getAmount() < trade.getAmount()) {
+        tradeOnlyDto.setRsEvent(rsEvent.get());
+        tradeOnlyDto.setAmount(trade.getAmount());
       } else {
         throw new AmountIsLessException("amount is less");
       }
     } else {
-      tradeDto = TradeDto.builder().rank(trade.getRank())
+      tradeOnlyDto = TradeOnlyDto.builder().rank(trade.getRank())
               .amount(trade.getAmount()).rsEvent(rsEvent.get()).build();
     }
     deleteTradeIfEventIsExistInTrade(eventId);
-    tradeRepository.save(tradeDto);
+    TradeOnlyDto tradeSave = tradeOnlyRepository.save(tradeOnlyDto);
+    tradeRepository.save(TradeDto.builder().rank(tradeSave.getRank())
+            .amount(tradeSave.getAmount()).rsEvent(tradeSave.getRsEvent()).build());
   }
 
   private void deleteTradeIfEventIsExistInTrade(int eventId) {
-    Optional<TradeDto> hasExistEventInTrade = tradeRepository.findByRsEventId(eventId);
-    hasExistEventInTrade.ifPresent(tradeRepository::delete);
+    Optional<TradeOnlyDto> hasExistEventInTrade = tradeOnlyRepository.findByRsEventId(eventId);
+    hasExistEventInTrade.ifPresent(tradeOnlyRepository::delete);
   }
 }

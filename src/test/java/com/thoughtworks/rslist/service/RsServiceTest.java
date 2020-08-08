@@ -3,14 +3,11 @@ package com.thoughtworks.rslist.service;
 import com.thoughtworks.rslist.domain.Trade;
 import com.thoughtworks.rslist.domain.Vote;
 import com.thoughtworks.rslist.dto.RsEventDto;
-import com.thoughtworks.rslist.dto.TradeDto;
+import com.thoughtworks.rslist.dto.TradeOnlyDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
 import com.thoughtworks.rslist.exception.AmountIsLessException;
-import com.thoughtworks.rslist.repository.RsEventRepository;
-import com.thoughtworks.rslist.repository.TradeRepository;
-import com.thoughtworks.rslist.repository.UserRepository;
-import com.thoughtworks.rslist.repository.VoteRepository;
+import com.thoughtworks.rslist.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -31,6 +28,8 @@ class RsServiceTest {
   @Mock UserRepository userRepository;
   @Mock VoteRepository voteRepository;
   @Mock
+  TradeOnlyRepository tradeOnlyRepository;
+  @Mock
   TradeRepository tradeRepository;
   LocalDateTime localDateTime;
   Vote vote;
@@ -38,7 +37,7 @@ class RsServiceTest {
   @BeforeEach
   void setUp() {
     initMocks(this);
-    rsService = new RsService(rsEventRepository, userRepository, voteRepository, tradeRepository);
+    rsService = new RsService(rsEventRepository, userRepository, voteRepository, tradeOnlyRepository, tradeRepository);
     localDateTime = LocalDateTime.now();
     vote = Vote.builder().voteNum(2).rsEventId(1).time(localDateTime).userId(1).build();
   }
@@ -122,9 +121,9 @@ class RsServiceTest {
     when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(rsEventDto));
     rsService.buy(Trade.builder().amount(24).rank(1).build(), 2);
     // then
-    verify(tradeRepository)
+    verify(tradeOnlyRepository)
             .save(
-                    TradeDto.builder().amount(24).rank(1).rsEvent(rsEventDto).build());
+                    TradeOnlyDto.builder().amount(24).rank(1).rsEvent(rsEventDto).build());
   }
 
   @Test
@@ -155,8 +154,8 @@ class RsServiceTest {
                     .voteNum(2)
                     .user(userDto)
                     .build();
-    TradeDto tradeDto =
-            TradeDto.builder()
+    TradeOnlyDto tradeOnlyDto =
+            TradeOnlyDto.builder()
                     .rsEvent(rsEventDtoBuyFirst)
                     .rank(1)
                     .amount(24)
@@ -164,13 +163,13 @@ class RsServiceTest {
 
 
     when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(rsEventDtoBuySecond));
-    when(tradeRepository.findByRank(anyInt())).thenReturn(Optional.of(tradeDto));
+    when(tradeOnlyRepository.findByRank(anyInt())).thenReturn(Optional.of(tradeOnlyDto));
     // when
     rsService.buy(Trade.builder().amount(26).rank(1).build(), 2);
 //     then
-    verify(tradeRepository)
+    verify(tradeOnlyRepository)
             .save(
-                    TradeDto.builder().amount(26).rank(1).rsEvent(rsEventDtoBuySecond).build());
+                    TradeOnlyDto.builder().amount(26).rank(1).rsEvent(rsEventDtoBuySecond).build());
   }
   @Test
   void shouldThrowErrorWhenBuyGivenRsEventIdAndHasExistRankAndAmountIsLessThan() {
@@ -200,8 +199,8 @@ class RsServiceTest {
                     .voteNum(2)
                     .user(userDto)
                     .build();
-    TradeDto tradeDto =
-            TradeDto.builder()
+    TradeOnlyDto tradeOnlyDto =
+            TradeOnlyDto.builder()
                     .rsEvent(rsEventDtoBuyFirst)
                     .rank(1)
                     .amount(24)
@@ -209,7 +208,7 @@ class RsServiceTest {
 
 
     when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(rsEventDtoBuySecond));
-    when(tradeRepository.findByRank(anyInt())).thenReturn(Optional.of(tradeDto));
+    when(tradeOnlyRepository.findByRank(anyInt())).thenReturn(Optional.of(tradeOnlyDto));
     // when
 //    rsService.buy(Trade.builder().amount(22).rank(1).build(), 2);
 //     then
