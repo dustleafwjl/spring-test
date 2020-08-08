@@ -224,7 +224,7 @@ class RsControllerTest {
             .andExpect(jsonPath("$[1].keyword", is("none")));
   }
   @Test
-  public void shouldBuyRsEventSuccessWhenBuyGivenRankHasSold() throws Exception {
+  public void shouldBuyRsEventSuccessWhenBuyGivenRankHasSoldAndAmountIsBigger() throws Exception {
     UserDto save = userRepository.save(userDto);
     RsEventDto rsEventDtoFirstBuy =
             RsEventDto.builder().keyword("none").eventName("the one event").user(save).voteNum(3).build();
@@ -261,5 +261,36 @@ class RsControllerTest {
             .andExpect(jsonPath("$[1].keyword", is("none")))
             .andExpect(jsonPath("$[2].eventName", is(rsEventDtoFirstBuy.getEventName())))
             .andExpect(jsonPath("$[2].keyword", is("none")));
+  }
+  @Test
+  public void shouldBuyRsEventFailWhenBuyGivenRankHasSoldAndAmountIsLessThan() throws Exception {
+    UserDto save = userRepository.save(userDto);
+    RsEventDto rsEventDtoFirstBuy =
+            RsEventDto.builder().keyword("none").eventName("the one event").user(save).voteNum(3).build();
+    rsEventDtoFirstBuy = rsEventRepository.save(rsEventDtoFirstBuy);
+    RsEventDto rsEventDtoSecondBuy =
+            RsEventDto.builder().keyword("none").eventName("the two event").user(save).voteNum(3).build();
+    rsEventDtoSecondBuy = rsEventRepository.save(rsEventDtoSecondBuy);
+
+    RsEventDto rsEventDtothridBuy =
+            RsEventDto.builder().keyword("none").eventName("the three event").user(save).voteNum(4).build();
+    rsEventDtothridBuy = rsEventRepository.save(rsEventDtothridBuy);
+    String jsonValue =
+            String.format(
+                    "{\"userId\":%d,\"time\":\"%s\",\"voteNum\":1}",
+                    save.getId(), LocalDateTime.now().toString());
+    String jsonTrade = "{\"amount\":24, \"rank\":1}";
+
+    String jsonTradeSecond = "{\"amount\":22, \"rank\":1}";
+
+    mockMvc
+            .perform(
+                    post("/rs/buy/"+rsEventDtoFirstBuy.getId())
+                            .content(jsonTrade).contentType(MediaType.APPLICATION_JSON));
+    mockMvc
+            .perform(
+                    post("/rs/buy/"+rsEventDtoSecondBuy.getId())
+                            .content(jsonTradeSecond).contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.error", is("amount is less")));
   }
 }

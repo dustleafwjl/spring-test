@@ -6,6 +6,7 @@ import com.thoughtworks.rslist.dto.RsEventDto;
 import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
+import com.thoughtworks.rslist.exception.RequestNotValidException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
@@ -67,7 +68,7 @@ public class RsService {
         tradeDto.setRsEventDto(rsEvent.get());
         tradeDto.setAmount(trade.getAmount());
       } else {
-        return;
+        throw new RequestNotValidException("amount is less");
       }
     } else {
       tradeDto = TradeDto.builder().rank(trade.getRank())
