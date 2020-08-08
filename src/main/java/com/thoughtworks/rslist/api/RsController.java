@@ -62,7 +62,11 @@ public class RsController {
     List<RsEvent> rsEvents = getRsEvents();
 
     for (int index = 0; index < tradeDtos.size(); index ++) {
-      rsEvents.add(index, tradeEvents.get(index));
+      int rankIndex = tradeDtos.get(index).getRank() - 1;
+      if(start != null) {
+        rankIndex += start - 1;
+      }
+      rsEvents.add(rankIndex, tradeEvents.get(index));
     }
     rsEvents = rsEvents.stream().filter(distinctByKey(RsEvent::getEventName)).collect(Collectors.toList());
 
@@ -80,7 +84,7 @@ public class RsController {
   }
   private List<RsEvent> getRsEventsWithTrade(List<TradeDto> tradeDtos) {
     return tradeDtos.stream()
-            .map(ele -> rsEventRepository.findById(ele.getRsEventDto().getId()).get())
+            .map(ele -> rsEventRepository.findById(ele.getRsEvent().getId()).get())
             .sorted(Comparator.comparing(RsEventDto::getVoteNum).reversed())
             .map(
                     item ->

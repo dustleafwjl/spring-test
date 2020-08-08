@@ -7,7 +7,6 @@ import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
 import com.thoughtworks.rslist.exception.AmountIsLessException;
-import com.thoughtworks.rslist.exception.RequestNotValidException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
@@ -121,13 +120,11 @@ class RsServiceTest {
                     .build();
 
     when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(rsEventDto));
-//    when(tradeRepository.findByRank(anyInt())).thenReturn(Optional.of(tradeDto));
-    // when
     rsService.buy(Trade.builder().amount(24).rank(1).build(), 2);
     // then
     verify(tradeRepository)
             .save(
-                    TradeDto.builder().amount(24).rank(1).rsEventDto(rsEventDto).build());
+                    TradeDto.builder().amount(24).rank(1).rsEvent(rsEventDto).build());
   }
 
   @Test
@@ -160,7 +157,7 @@ class RsServiceTest {
                     .build();
     TradeDto tradeDto =
             TradeDto.builder()
-                    .rsEventDto(rsEventDtoBuyFirst)
+                    .rsEvent(rsEventDtoBuyFirst)
                     .rank(1)
                     .amount(24)
                     .build();
@@ -173,7 +170,7 @@ class RsServiceTest {
 //     then
     verify(tradeRepository)
             .save(
-                    TradeDto.builder().amount(26).rank(1).rsEventDto(rsEventDtoBuySecond).build());
+                    TradeDto.builder().amount(26).rank(1).rsEvent(rsEventDtoBuySecond).build());
   }
   @Test
   void shouldThrowErrorWhenBuyGivenRsEventIdAndHasExistRankAndAmountIsLessThan() {
@@ -205,7 +202,7 @@ class RsServiceTest {
                     .build();
     TradeDto tradeDto =
             TradeDto.builder()
-                    .rsEventDto(rsEventDtoBuyFirst)
+                    .rsEvent(rsEventDtoBuyFirst)
                     .rank(1)
                     .amount(24)
                     .build();
@@ -223,6 +220,4 @@ class RsServiceTest {
               rsService.buy(Trade.builder().amount(22).rank(1).build(), 2);
             });
   }
-
-
 }

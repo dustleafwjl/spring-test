@@ -14,7 +14,10 @@ public interface TradeRepository extends CrudRepository<TradeDto, Integer> {
 //    @Query(name = "select * from trade t where e.rank = ?", nativeQuery = true)
     Optional<TradeDto> findByRank(int rank);
 
-//    Optional<TradeDto> findByRsEventId();
+//    @Query(name = "select * from trade t where t.rs_event_id = :rsEventId", nativeQuery = true)
+//    Optional<TradeDto> findAccordingToRsEventId(int rsEventId);
+
+    Optional<TradeDto> findByRsEventId(int rsEventId);
 
 //    void deleteByRsEventId(int rsEventId);
 }

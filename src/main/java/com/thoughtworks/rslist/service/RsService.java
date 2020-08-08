@@ -7,12 +7,10 @@ import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
 import com.thoughtworks.rslist.exception.AmountIsLessException;
-import com.thoughtworks.rslist.exception.RequestNotValidException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
 import com.thoughtworks.rslist.repository.VoteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -61,20 +59,26 @@ public class RsService {
     Optional<TradeDto> existTrade = tradeRepository.findByRank(trade.getRank());
     TradeDto tradeDto;
     if(!rsEvent.isPresent()) {
-      return;
+      throw new RuntimeException("rsevent is not exist");
     }
     if(existTrade.isPresent()) {
       tradeDto = existTrade.get();
       if(tradeDto.getAmount() < trade.getAmount()) {
-        tradeDto.setRsEventDto(rsEvent.get());
+        tradeDto.setRsEvent(rsEvent.get());
         tradeDto.setAmount(trade.getAmount());
       } else {
         throw new AmountIsLessException("amount is less");
       }
     } else {
       tradeDto = TradeDto.builder().rank(trade.getRank())
-              .amount(trade.getAmount()).rsEventDto(rsEvent.get()).build();
+              .amount(trade.getAmount()).rsEvent(rsEvent.get()).build();
     }
+    deleteTradeIfEventIsExistInTrade(eventId);
     tradeRepository.save(tradeDto);
+  }
+
+  private void deleteTradeIfEventIsExistInTrade(int eventId) {
+    Optional<TradeDto> hasExistEventInTrade = tradeRepository.findByRsEventId(eventId);
+    hasExistEventInTrade.ifPresent(tradeRepository::delete);
   }
 }

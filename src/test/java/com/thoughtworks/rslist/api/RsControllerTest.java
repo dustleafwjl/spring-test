@@ -293,4 +293,40 @@ class RsControllerTest {
                             .content(jsonTradeSecond).contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.error", is("amount is less")));
   }
+
+  @Test
+  public void shouldUpdateRsEventWhenBuyGivenRsEventHasExist() throws Exception {
+    UserDto save = userRepository.save(userDto);
+    RsEventDto rsEventDtoFirstBuy =
+            RsEventDto.builder().keyword("none").eventName("the one event").user(save).voteNum(5).build();
+    rsEventDtoFirstBuy = rsEventRepository.save(rsEventDtoFirstBuy);
+    RsEventDto rsEventDtoSecondBuy =
+            RsEventDto.builder().keyword("none").eventName("the two event").user(save).voteNum(4).build();
+    rsEventDtoSecondBuy = rsEventRepository.save(rsEventDtoSecondBuy);
+    RsEventDto rsEventDtothridBuy =
+            RsEventDto.builder().keyword("none").eventName("the three event").user(save).voteNum(3).build();
+    rsEventDtothridBuy = rsEventRepository.save(rsEventDtothridBuy);
+
+    String jsonTradeFirst = "{\"amount\":24, \"rank\":1}";
+
+    String jsonTradeSecond = "{\"amount\":26, \"rank\":2}";
+
+    mockMvc
+            .perform(
+                    post("/rs/buy/"+rsEventDtothridBuy.getId())
+                            .content(jsonTradeFirst).contentType(MediaType.APPLICATION_JSON));
+    mockMvc
+            .perform(
+                    post("/rs/buy/"+rsEventDtothridBuy.getId())
+                            .content(jsonTradeSecond).contentType(MediaType.APPLICATION_JSON));
+    mockMvc
+            .perform(get("/rs/list"))
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[0].eventName", is(rsEventDtoFirstBuy.getEventName())))
+            .andExpect(jsonPath("$[0].keyword", is("none")))
+            .andExpect(jsonPath("$[1].eventName", is(rsEventDtothridBuy.getEventName())))
+            .andExpect(jsonPath("$[1].keyword", is("none")))
+            .andExpect(jsonPath("$[2].eventName", is(rsEventDtoSecondBuy.getEventName())))
+            .andExpect(jsonPath("$[2].keyword", is("none")));
+  }
 }
