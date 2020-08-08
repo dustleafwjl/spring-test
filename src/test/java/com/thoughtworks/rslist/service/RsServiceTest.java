@@ -6,6 +6,8 @@ import com.thoughtworks.rslist.dto.RsEventDto;
 import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
+import com.thoughtworks.rslist.exception.AmountIsLessException;
+import com.thoughtworks.rslist.exception.RequestNotValidException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
@@ -172,6 +174,54 @@ class RsServiceTest {
     verify(tradeRepository)
             .save(
                     TradeDto.builder().amount(26).rank(1).rsEventDto(rsEventDtoBuySecond).build());
+  }
+  @Test
+  void shouldThrowErrorWhenBuyGivenRsEventIdAndHasExistRankAndAmountIsLessThan() {
+    // given
+    UserDto userDto =
+            UserDto.builder()
+                    .voteNum(5)
+                    .phone("18888888888")
+                    .gender("female")
+                    .email("a@b.com")
+                    .age(19)
+                    .userName("xiaoli")
+                    .id(1)
+                    .build();
+    RsEventDto rsEventDtoBuyFirst =
+            RsEventDto.builder()
+                    .eventName("event name")
+                    .id(2)
+                    .keyword("keyword")
+                    .voteNum(2)
+                    .user(userDto)
+                    .build();
+    RsEventDto rsEventDtoBuySecond =
+            RsEventDto.builder()
+                    .eventName("event name")
+                    .keyword("keyword")
+                    .voteNum(2)
+                    .user(userDto)
+                    .build();
+    TradeDto tradeDto =
+            TradeDto.builder()
+                    .rsEventDto(rsEventDtoBuyFirst)
+                    .rank(1)
+                    .amount(24)
+                    .build();
+
+
+    when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(rsEventDtoBuySecond));
+    when(tradeRepository.findByRank(anyInt())).thenReturn(Optional.of(tradeDto));
+    // when
+//    rsService.buy(Trade.builder().amount(22).rank(1).build(), 2);
+//     then
+
+    assertThrows(
+            AmountIsLessException.class,
+            () -> {
+              rsService.buy(Trade.builder().amount(22).rank(1).build(), 2);
+            });
   }
 
 
